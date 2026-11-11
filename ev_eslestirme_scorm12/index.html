@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eşyalar Evini Buluyor</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100dvh;font:600 16px system-ui,sans-serif;color:#23304b;background:linear-gradient(#d8f5ff 70%,#c8edac 70%);background-attachment:fixed}
+main{max-width:1250px;margin:auto;padding:18px;text-align:center}
+h1{margin:0;font-size:clamp(26px,5vw,48px);letter-spacing:-.045em}
+header p{margin:8px 0 16px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid #23304b;outline-offset:3px}
+.stats{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px}
+.stats>*{background:#fff;border:0;border-radius:20px;padding:8px 14px}
+progress{width:min(450px,90%);height:14px;accent-color:#237d59}
+.board{display:grid;grid-template-columns:minmax(135px,1fr) minmax(320px,3fr) minmax(135px,1fr);align-items:center;gap:18px;margin:8px auto}
+.bank{display:grid;gap:8px}
+.card{border:2px solid #b6d9df;background:#edf7f8;border-radius:12px;padding:7px;min-height:46px;display:flex;align-items:center;gap:8px;text-align:left;touch-action:none;user-select:none;cursor:grab}
+.card:hover,.card[aria-pressed=true]{background:#ffe274;border-color:#bd8015}
+.card.done{opacity:.57;cursor:default}
+.card img{width:30px;height:30px;object-fit:cover;border-radius:6px;pointer-events:none}
+.card span{pointer-events:none}
+.roof{height:78px;background:#b65052;clip-path:polygon(50% 0,100% 100%,0 100%);margin:0 -8px;border-bottom:8px solid #823940}
+.house{background:#fff3d7;padding:8px;border:5px solid #876046;border-top:0;border-radius:0 0 14px 14px;box-shadow:0 8px 0 #74985b;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.room{border:2px solid #0002;border-radius:10px;min-height:103px;padding:7px;background:var(--room);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px}
+.room:last-child{grid-column:1/-1}
+.room:hover,.room.over{border-color:#23466a;box-shadow:inset 0 0 0 2px white}
+.room b{font-size:25px}.room small{min-height:20px}
+#status{min-height:48px;margin:10px 0 0;color:#23304b}
+.ghost,.effect{position:fixed;pointer-events:none;z-index:10}
+.ghost{transform:translate(12px,12px);background:#ffe274;border-radius:12px;padding:10px;box-shadow:0 5px 15px #0003}
+.effect{top:-30px;animation:fall var(--duration) linear forwards}
+@keyframes fall{to{transform:translate(var(--drift),110vh) rotate(430deg)}}
+@media(max-width:700px){main{padding:12px}.board{grid-template-columns:1fr 1fr;gap:8px}.home{grid-area:2/1/3/3}.bank{display:flex;flex-wrap:wrap;justify-content:center}.bank:first-child,.bank:last-child{grid-column:1/-1}.room{min-height:75px}.roof{height:44px}.card{min-height:36px;padding:4px 6px;font-size:13px}.card img{width:22px;height:22px}}
+</style>
+<main>
+<header>
+<h1>🏡 Eşyalar Evini Buluyor</h1>
+<p>Eşyayı odasına sürükle veya önce eşyaya, sonra odaya dokun.</p>
+<div class="stats">
+<span>⭐ <strong id="score">0</strong> puan</span>
+<span>❤️ <strong id="lives">5</strong> can</span>
+<span id="count"></span>
+<button id="restart"><span aria-hidden="true">↻</span> Yeniden başlat</button>
+</div>
+<progress id="progress" aria-label="Tamamlanan eşleştirmeler"></progress>
+</header>
+<p id="status" role="status"></p>
+<div class="board">
+<div class="bank" id="left" aria-label="Eşyalar"></div>
+<section class="home" aria-label="Evin odaları">
+<div class="roof" aria-hidden="true"></div>
+<div class="house" id="rooms"></div>
+</section>
+<div class="bank" id="right" aria-label="Diğer eşyalar"></div>
+</div>
+</main>
+<script>
+'use strict';
+// DATA: Her satır [dosya numarası, eşya adı, oda anahtarı, yedek ikon].
+// Örneğin 1 numaralı eşya index.html yanındaki 1.jpg ve 1.mp3 dosyalarını kullanır.
+const DATA = [
+  [1,'Fırın','mutfak','🍞'], [2,'Buzdolabı','mutfak','🧊'], [3,'Tencere','mutfak','🍲'],
+  [4,'Televizyon','salon','📺'], [5,'Kanepe','salon','🛋️'], [6,'Kumanda','salon','🎛️'],
+  [7,'Yatak','yatak','🛏️'], [8,'Yastık','yatak','💤'], [9,'Yorgan','yatak','🛌'],
+  [10,'Diş fırçası','banyo','🪥'], [11,'Duş başlığı','banyo','🚿'], [12,'Küvet','banyo','🛁'],
+  [13,'Sulama kabı','bahce','💧'], [14,'Bahçe hortumu','bahce','🪴'], [15,'Çim biçme makinesi','bahce','🌿']
+];
+// Oda başlığı, ikonu ve rengi. İlk sütun DATA içindeki oda anahtarıyla aynı olmalı.
+const ROOMS = [
+  ['mutfak','Mutfak','🍳','#ffe1a1'], ['salon','Salon','🛋️','#d9d4ff'],
+  ['yatak','Yatak odası','🛏️','#ffd6e8'], ['banyo','Banyo','🛁','#c1edfa'],
+  ['bahce','Bahçe','🌷','#d7efad']
+];
+const MAX_LIVES = 5;
+const POINTS = 10;
+const byId = id => document.getElementById(id);
+const cards = new Map();
+const rooms = new Map();
+const matched = new Set();
+let lives, selected, drag, audio, context, tone;
+let audioRequest = 0;
+
+// Fisher–Yates: Her başlangıçta eşya etiketlerini yeniden karıştır.
+function shuffle(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function select(id) {
+  selected = id;
+  for (const [key, card] of cards) card.setAttribute('aria-pressed', key === id);
+}
+function update() {
+  byId('score').textContent = matched.size * POINTS;
+  byId('lives').textContent = lives;
+  byId('count').textContent = matched.size + ' / ' + DATA.length + ' eşleşme';
+  byId('progress').max = DATA.length;
+  byId('progress').value = matched.size;
+}
+function message(text) { byId('status').textContent = text; }
+function over() { return lives === 0 || matched.size === DATA.length; }
+
+function stopSound() {
+  audioRequest++;
+  audio?.pause();
+  if (tone) { tone.stop(); tone = null; }
+}
+// Doğru eşleşmede eşyanın MP3'ü çalar. Eksik ses dosyalarında kısa bir ton kullanılır.
+function sound(correct, id) {
+  stopSound();
+  const request = audioRequest;
+  try {
+    context ??= new AudioContext();
+    context.resume().catch(() => {});
+  } catch {}
+  function beep() {
+    if (!context || request !== audioRequest) return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const now = context.currentTime;
+    oscillator.frequency.setValueAtTime(correct ? 520 : 310, now);
+    oscillator.frequency.linearRampToValueAtTime(correct ? 780 : 190, now + .19);
+    gain.gain.setValueAtTime(.15, now);
+    gain.gain.exponentialRampToValueAtTime(.001, now + .24);
+    oscillator.connect(gain).connect(context.destination);
+    tone = oscillator;
+    oscillator.onended = () => { if (tone === oscillator) tone = null; };
+    oscillator.start(now);
+    oscillator.stop(now + .25);
+  }
+  if (correct) {
+    audio = new Audio(id + '.mp3');
+    audio.play().catch(beep);
+  } else beep();
+}
+
+function rain(correct) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for (let i = 0; i < (correct ? 42 : 20); i++) {
+    const piece = document.createElement('span');
+    piece.className = 'effect';
+    piece.setAttribute('aria-hidden','true');
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.setProperty('--duration', 1 + Math.random() * 1.4 + 's');
+    piece.style.setProperty('--drift', (Math.random() - .5) * 180 + 'px');
+    if (correct) {
+      piece.style.cssText += 'width:9px;height:15px;background:hsl(' + Math.random()*360 + ' 85% 55%);';
+    } else piece.textContent = '😢';
+    document.body.append(piece);
+    piece.addEventListener('animationend', () => piece.remove(), {once:true});
+  }
+}
+
+// Sürükleme, dokunma ve klavye aynı eşleşme kontrolünü kullanır.
+function match(id, key) {
+  if (id == null || over() || matched.has(id)) return;
+  const [, name, correctKey, icon] = DATA.find(item => item[0] === id);
+  const correct = key === correctKey;
+  const roomName = ROOMS.find(room => room[0] === key)[1];
+  select(null);
+  if (correct) {
+    matched.add(id);
+    const card = cards.get(id);
+    card.classList.add('done');
+    card.disabled = true;
+    const token = document.createElement('span');
+    token.textContent = icon;
+    token.title = name;
+    token.setAttribute('role','img');
+    token.setAttribute('aria-label',name);
+    rooms.get(key).querySelector('small').append(token);
+    message('✓ ' + name + ' → ' + roomName + '! +10 puan');
+  } else {
+    lives--;
+    message('Bir daha dene! ' + name + ' başlangıç yerine döndü.');
+  }
+  update();
+  reportToLms();
+  sound(correct, id);
+  rain(correct);
+  if (over()) {
+    message(correct ? '🎉 Tüm eşyalar yerinde! ' + matched.size * POINTS + ' puan kazandın.'
+      : 'Canların bitti. ' + matched.size + ' eşleşme yaptın. Tekrar denemek için yeniden başlat.');
+    for (const card of cards.values()) card.disabled = true;
+    for (const room of rooms.values()) room.disabled = true;
+    byId('restart').focus();
+  } else {
+    const next = correct ? [...cards.values()].find(card => !card.disabled) : cards.get(id);
+    next.focus({preventScroll:true});
+  }
+}
+
+function targetAt(x,y) { return document.elementFromPoint(x,y)?.closest('.room'); }
+function clearDrag() {
+  drag?.ghost?.remove();
+  drag = null;
+  for (const room of rooms.values()) room.classList.remove('over');
+}
+function enableDrag(card, id, name, icon) {
+  card.addEventListener('click', event => {
+    // Fiziksel sürükleme sonrasında tarayıcının ürettiği tıklamayı atla.
+    if (card.ignoreClick && event.detail) return;
+    select(selected === id ? null : id);
+    message(selected === null ? 'Bir eşya seç.' : name + ' seçildi. Şimdi odasını seç.');
+  });
+  card.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0 || drag || over()) return;
+    card.ignoreClick = false;
+    card.setPointerCapture(event.pointerId);
+    drag = {pointer:event.pointerId, x:event.clientX, y:event.clientY, ghost:null};
+  });
+  card.addEventListener('pointermove', event => {
+    if (drag?.pointer !== event.pointerId) return;
+    if (!drag.ghost && Math.hypot(event.clientX-drag.x,event.clientY-drag.y) < 8) return;
+    if (!drag.ghost) {
+      drag.ghost = document.createElement('div');
+      drag.ghost.className = 'ghost';
+      drag.ghost.textContent = icon + ' ' + name;
+      drag.ghost.setAttribute('aria-hidden','true');
+      document.body.append(drag.ghost);
+      select(id);
+    }
+    drag.ghost.style.left = event.clientX + 'px';
+    drag.ghost.style.top = event.clientY + 'px';
+    const target = targetAt(event.clientX,event.clientY);
+    for (const room of rooms.values()) room.classList.toggle('over', room === target);
+  });
+  card.addEventListener('pointerup', event => {
+    if (drag?.pointer !== event.pointerId) return;
+    const wasDragging = Boolean(drag.ghost);
+    const target = wasDragging && targetAt(event.clientX,event.clientY);
+    clearDrag();
+    if (!wasDragging) return;
+    card.ignoreClick = true;
+    if (target) match(id,target.dataset.key);
+    else { select(null); message('Eşyayı evin içindeki bir odanın üzerine bırak.'); }
+  });
+  function cancel(event) {
+    if (drag?.pointer !== event.pointerId) return;
+    clearDrag();
+    select(null);
+  }
+  card.addEventListener('pointercancel', cancel);
+  card.addEventListener('lostpointercapture', cancel);
+}
+
+function start() {
+  stopSound();
+  clearDrag();
+  document.querySelectorAll('.effect').forEach(piece => piece.remove());
+  lives = MAX_LIVES;
+  matched.clear();
+  cards.clear();
+  rooms.clear();
+  select(null);
+  for (const id of ['left','right','rooms']) byId(id).replaceChildren();
+  for (const [key,name,icon,color] of ROOMS) {
+    const room = document.createElement('button');
+    room.className = 'room';
+    room.dataset.key = key;
+    room.style.setProperty('--room',color);
+    room.innerHTML = '<b aria-hidden="true"></b><span></span><small></small>';
+    room.querySelector('b').textContent = icon;
+    room.querySelector('span').textContent = name;
+    room.addEventListener('click', () => {
+      if (selected === null) message('Önce bir eşya seç.');
+      else match(selected,key);
+    });
+    rooms.set(key,room);
+    byId('rooms').append(room);
+  }
+  shuffle(DATA).forEach(([id,name,,icon],index) => {
+    const card = document.createElement('button');
+    card.className = 'card';
+    card.setAttribute('aria-pressed','false');
+    const image = new Image();
+    image.alt = '';
+    image.draggable = false;
+    const fallback = document.createElement('span');
+    fallback.textContent = icon;
+    fallback.setAttribute('aria-hidden','true');
+    image.hidden = true;
+    image.addEventListener('load', () => { image.hidden = false; fallback.hidden = true; });
+    image.src = id + '.jpg';
+    const label = document.createElement('span');
+    label.textContent = name;
+    card.append(image,fallback,label);
+    enableDrag(card,id,name,icon);
+    cards.set(id,card);
+    byId(index < Math.ceil(DATA.length / 2) ? 'left' : 'right').append(card);
+  });
+  update();
+  message('Bir eşya seç ve evdeki yerini bul.');
+}
+// SCORM 1.2: LMS bulunmadığında oyun bağımsız çalışır.
+let lms = null;
+function findLms(win) {
+  for (let i = 0; win && i < 50; i++) {
+    try {
+      if (win.API) return win.API;
+      if (win === win.parent) break;
+      win = win.parent;
+    } catch { break; }
+  }
+  return null;
+}
+try {
+  const api = findLms(window) || findLms(window.opener);
+  if (api && String(api.LMSInitialize('')) === 'true') lms = api;
+} catch {}
+function reportToLms() {
+  if (!lms) return;
+  try {
+    lms.LMSSetValue('cmi.core.score.min', '0');
+    lms.LMSSetValue('cmi.core.score.max', '100');
+    lms.LMSSetValue('cmi.core.score.raw', String(Math.round(100 * matched.size / DATA.length)));
+    const status = matched.size === DATA.length ? 'passed' : lives === 0 ? 'failed' : 'incomplete';
+    lms.LMSSetValue('cmi.core.lesson_status', status);
+    lms.LMSCommit('');
+  } catch {}
+}
+window.addEventListener('pagehide', event => {
+  if (!lms || event.persisted) return;
+  try { lms.LMSCommit(''); lms.LMSFinish(''); } catch {}
+  lms = null;
+});
+
+byId('restart').addEventListener('click',start);
+document.addEventListener('keydown',event => {
+  if (event.key === 'Escape') { clearDrag(); select(null); }
+});
+start();
+</script>
+</html>

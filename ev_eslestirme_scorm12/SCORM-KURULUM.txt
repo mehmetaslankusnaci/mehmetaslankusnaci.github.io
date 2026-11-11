@@ -1,0 +1,7 @@
+Eşyalar Evini Buluyor — SCORM 1.2
+
+ZIP dosyasını çıkarmadan LMS'deki SCORM etkinliğine yükleyin.
+Oyunda her doğru eşleşme 10 puandır. LMS puanı 100 üzerinden kaydeder.
+15 eşleşme başarıyla tamamlanırsa geçti, canlar biterse başarısız,
+oyun devam ederken ise tamamlanmadı durumu gönderilir.
+Oyunu yeniden açmak yeni bir oyun başlatır.

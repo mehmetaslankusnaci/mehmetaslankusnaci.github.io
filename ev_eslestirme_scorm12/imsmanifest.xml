@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+ xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+ identifier="EV_ESLESTIRME" version="1.0">
+ <metadata><schema>ADL SCORM</schema><schemaversion>1.2</schemaversion></metadata>
+ <organizations default="ORG"><organization identifier="ORG">
+ <title>Eşyalar Evini Buluyor</title>
+ <item identifier="GAME" identifierref="SCO"><title>Eşyalar Evini Buluyor</title></item>
+ </organization></organizations>
+ <resources><resource identifier="SCO" type="webcontent" adlcp:scormtype="sco" href="index.html">
+ <file href="1.jpg"/>
+ <file href="1.mp3"/>
+ <file href="10.jpg"/>
+ <file href="10.mp3"/>
+ <file href="11.jpg"/>
+ <file href="11.mp3"/>
+ <file href="12.jpg"/>
+ <file href="12.mp3"/>
+ <file href="13.jpg"/>
+ <file href="13.mp3"/>
+ <file href="14.jpg"/>
+ <file href="14.mp3"/>
+ <file href="15.jpg"/>
+ <file href="15.mp3"/>
+ <file href="2.jpg"/>
+ <file href="2.mp3"/>
+ <file href="3.jpg"/>
+ <file href="3.mp3"/>
+ <file href="4.jpg"/>
+ <file href="4.mp3"/>
+ <file href="5.jpg"/>
+ <file href="5.mp3"/>
+ <file href="6.jpg"/>
+ <file href="6.mp3"/>
+ <file href="7.jpg"/>
+ <file href="7.mp3"/>
+ <file href="8.jpg"/>
+ <file href="8.mp3"/>
+ <file href="9.jpg"/>
+ <file href="9.mp3"/>
+ <file href="index.html"/>
+ </resource></resources>
+</manifest>
